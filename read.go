@@ -730,6 +730,18 @@ func (v Value) Len() int {
 }
 
 func (r *Reader) resolve(parent objptr, x interface{}) Value {
+	// Super hacky workaround for libtiff/tiff2pdf can have object references
+	// contained in arrays:
+	//
+	// e.g. /Contents [ 5 0 R ]
+	//
+	// In this case they cannot be simply treated as values but we need to check
+	// the first element is an object pointer we then explore that one.
+	if arr, ok := x.(array); ok && len(arr) == 1 {
+		if ptr, ok := arr[0].(objptr); ok {
+			return r.resolve(parent, ptr)
+		}
+	}
 	if ptr, ok := x.(objptr); ok {
 		if ptr.id >= uint32(len(r.xref)) {
 			return Value{}
